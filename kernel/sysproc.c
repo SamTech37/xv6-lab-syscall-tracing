@@ -93,14 +93,33 @@ sys_uptime(void)
 }
 
 
+
 // [Sam] added
 //
 uint64
 sys_trace(void)
 {
-  printf("sys_trace called\n");
+  int pid;
+  
+  // Get the PID argument from user space
+  argint(0, &pid);
+  
+  // Find the process with the given PID
+  struct proc *p = find_proc_by_pid(pid);
+  
+  if(p == 0) {
+    // Process not found
+    return -1;
+  }
+  
+  // Enable tracing for this process
+  acquire(&p->lock);
+  p->traced = 1;
+  release(&p->lock);
+  
   return 0;
 }
+
 
 
 

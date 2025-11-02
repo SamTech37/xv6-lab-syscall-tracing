@@ -131,9 +131,31 @@ static uint64 (*syscalls[])(void) = {
 [SYS_trace]   sys_trace,  // [Sam] added
 };
 
-
-
-
+// [Sam] Syscall name table for tracing
+static char *syscall_names[] = {
+[SYS_fork]    "fork",
+[SYS_exit]    "exit",
+[SYS_wait]    "wait",
+[SYS_pipe]    "pipe",
+[SYS_read]    "read",
+[SYS_kill]    "kill",
+[SYS_exec]    "exec",
+[SYS_fstat]   "fstat",
+[SYS_chdir]   "chdir",
+[SYS_dup]     "dup",
+[SYS_getpid]  "getpid",
+[SYS_sbrk]    "sbrk",
+[SYS_sleep]   "sleep",
+[SYS_uptime]  "uptime",
+[SYS_open]    "open",
+[SYS_write]   "write",
+[SYS_mknod]   "mknod",
+[SYS_unlink]  "unlink",
+[SYS_link]    "link",
+[SYS_mkdir]   "mkdir",
+[SYS_close]   "close",
+[SYS_trace]   "trace",
+};
 
 void
 syscall(void)
@@ -143,9 +165,50 @@ syscall(void)
 
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    // Save first argument BEFORE syscall dispatch
+    uint64 arg0 = p->trapframe->a0;
+    
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
+    
+    // [Sam] Print syscall trace if this process is being traced
+    if(p->traced) {
+      printf("[pid %d] %s(", p->pid, syscall_names[num]);
+      
+      // Handle syscalls with string arguments
+      if(num == SYS_open || num == SYS_unlink || 
+         num == SYS_chdir || num == SYS_mkdir || num == SYS_link) {
+        char path[200];
+        if(fetchstr(arg0, path, sizeof(path)) >= 0) {
+          printf("\"%s\"", path);
+        } else {
+          printf("<bad ptr>");
+        }
+      }
+      // Handle exec specially - print program name from argv[0]
+      else if(num == SYS_exec) {
+        // For exec, a1 contains pointer to argv array
+        // We want to read argv[0] from that array
+        uint64 argv0_ptr;
+        char path[200];
+        
+        // a1 contains the address of the argv array
+        // Read the first element of that array (which is argv[0])
+        if(fetchaddr(p->trapframe->a1, &argv0_ptr) >= 0 &&
+           fetchstr(argv0_ptr, path, sizeof(path)) >= 0) {
+          printf("\"%s\"", path);
+        } else {
+          printf("<bad ptr>");
+        }
+      }
+      // For all other syscalls, print first argument as integer
+      else {
+        printf("%ld", arg0);
+      }
+      
+      printf(") = %ld\n", p->trapframe->a0);
+    }
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);

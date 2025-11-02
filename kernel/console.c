@@ -59,7 +59,13 @@ int
 consolewrite(int user_src, uint64 src, int n)
 {
   int i;
-
+  
+  // [Sam] If this process is being traced, drop its console output
+  // to prevent interleaving with trace messages
+  struct proc *p = myproc();
+  if(p && p->traced) {
+    return n;  // Pretend we wrote everything
+  }
 
   for(i = 0; i < n; i++){
     char c;

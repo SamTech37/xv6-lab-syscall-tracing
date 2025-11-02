@@ -140,6 +140,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_find\
+	$U/_strace\
 	# [Sam] added
 
 
