@@ -93,5 +93,14 @@ sys_uptime(void)
 }
 
 
+// [Sam] added
+//
+uint64
+sys_trace(void)
+{
+  printf("sys_trace called\n");
+  return 0;
+}
+
 
 
